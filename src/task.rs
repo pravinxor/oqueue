@@ -74,13 +74,12 @@ impl Task {
     pub fn release(&mut self) {
         self.hold = false;
 
-        let mut inner = self.handle.inner.lock();
+        let inner = &mut *self.handle.inner.lock();
         inner.get(self.index).hold = false;
         if self.index == inner.finished {
-            inner
-                .writer
-                .print(&inner.pending.front().unwrap().buffer)
-                .unwrap()
+            let front_buf = &mut inner.pending.front_mut().unwrap().buffer;
+            inner.writer.print(front_buf).unwrap();
+            front_buf.clear();
         }
     }
 
