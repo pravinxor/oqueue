@@ -260,6 +260,7 @@ struct Inner {
 
 struct Output {
     buffer: Buffer,
+    hold: bool,
     done: bool,
 }
 
@@ -308,6 +309,7 @@ impl Inner {
             let writer = &self.writer;
             self.pending.resize_with(offset + 1, || Output {
                 buffer: writer.buffer(),
+                hold: false,
                 done: false,
             });
         }

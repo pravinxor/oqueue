@@ -67,11 +67,13 @@ impl Task {
     /// Redirect all output to the buffer regardless of finish status
     pub fn hold(&mut self) {
         self.hold = true;
+        self.handle.inner.lock().get(self.index).hold = true;
     }
 
     /// Release the restriction on the buffer, allowing the buffer to be flushed to the stream
     pub fn release(&mut self) {
         self.hold = false;
+        self.handle.inner.lock().get(self.index).hold = false;
     }
 
     /// Returns whether the output buffer is empty
@@ -160,14 +162,6 @@ impl WriteColor for Task {
     }
 }
 
-impl Drop for Task {
-    fn drop(&mut self) {
-        if self.hold {
-            self.handle.inner.lock().get(self.index).buffer.clear();
-        }
-    }
-}
-
 impl Drop for Handle {
     fn drop(&mut self) {
         let mut inner = &mut *self.inner.lock();
@@ -178,11 +172,15 @@ impl Drop for Handle {
             inner.finished += 1;
             let mut task = inner.pending.pop_front().unwrap();
             let _ = task.buffer.reset();
-            let _ = inner.writer.print(&task.buffer);
+            if !task.hold {
+                let _ = inner.writer.print(&task.buffer);
+            }
         }
 
         if let Some(head) = inner.pending.get_mut(0) {
-            let _ = inner.writer.print(&head.buffer);
+            if !head.hold {
+                let _ = inner.writer.print(&head.buffer);
+            }
             head.buffer.clear();
         }
     }
