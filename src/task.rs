@@ -36,6 +36,9 @@ pub struct Task {
     /// This field is read-only; writing to its value will not compile.
     #[readonly]
     pub index: usize,
+
+    /// The hold status of the task
+    hold: bool,
 }
 
 struct Handle {
@@ -57,7 +60,29 @@ impl Task {
         Task {
             handle: Rc::new(Handle { inner, index }),
             index,
+            hold: false,
         }
+    }
+
+    /// Redirect all output to the buffer regardless of finish status
+    pub fn hold(&mut self) {
+        self.hold = true;
+    }
+
+    /// Release the restriction on the buffer, allowing the buffer to be flushed to the stream
+    pub fn release(&mut self) {
+        self.hold = false;
+    }
+
+    /// Returns whether the output buffer is empty
+    pub fn has_output(&self) -> bool {
+        !self
+            .handle
+            .inner
+            .lock()
+            .get(self.handle.index)
+            .buffer
+            .is_empty()
     }
 
     /// Set output to appear in bold uncolored.
@@ -95,7 +120,7 @@ impl Task {
     fn apply<T>(&self, f: impl FnOnce(&mut dyn WriteColor) -> T) -> T {
         let inner = &mut *self.handle.inner.lock();
 
-        if self.handle.index == inner.finished {
+        if !self.hold && self.handle.index == inner.finished {
             f(&mut inner.stream)
         } else {
             f(&mut inner.get(self.handle.index).buffer)
