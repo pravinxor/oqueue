@@ -73,14 +73,6 @@ impl Task {
     /// Release the restriction on the buffer, allowing the buffer to be flushed to the stream
     pub fn release(&mut self) {
         self.hold = false;
-
-        let inner = &mut *self.handle.inner.lock();
-        inner.get(self.index).hold = false;
-        if self.index == inner.finished {
-            let front_buf = &mut inner.pending.front_mut().unwrap().buffer;
-            inner.writer.print(front_buf).unwrap();
-            front_buf.clear();
-        }
     }
 
     /// Returns whether the output buffer is empty
