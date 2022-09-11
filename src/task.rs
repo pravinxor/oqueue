@@ -73,6 +73,7 @@ impl Task {
     /// Release the restriction on the buffer, allowing the buffer to be flushed to the stream
     pub fn release(&mut self) {
         self.hold = false;
+        self.handle.inner.lock().get(self.index).hold = false;
     }
 
     /// Returns whether the output buffer is empty
@@ -122,6 +123,13 @@ impl Task {
         let inner = &mut *self.handle.inner.lock();
 
         if !self.hold && self.handle.index == inner.finished {
+            if let Some(handle) = inner.pending.front_mut() {
+                if !handle.buffer.is_empty() {
+                    eprintln!("wrote handle buffer");
+                    inner.writer.print(&handle.buffer).unwrap();
+                    handle.buffer.clear();
+                }
+            }
             f(&mut inner.stream)
         } else {
             f(&mut inner.get(self.handle.index).buffer)
@@ -176,11 +184,11 @@ impl Drop for Handle {
             }
         }
 
-        if let Some(head) = inner.pending.get_mut(0) {
+        if let Some(head) = inner.pending.front_mut() {
             if !head.hold {
                 let _ = inner.writer.print(&head.buffer);
+                head.buffer.clear();
             }
-            head.buffer.clear();
         }
     }
 }
