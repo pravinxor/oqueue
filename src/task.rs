@@ -125,7 +125,6 @@ impl Task {
         if !self.hold && self.handle.index == inner.finished {
             if let Some(handle) = inner.pending.front_mut() {
                 if !handle.buffer.is_empty() {
-                    eprintln!("wrote handle buffer");
                     inner.writer.print(&handle.buffer).unwrap();
                     handle.buffer.clear();
                 }
